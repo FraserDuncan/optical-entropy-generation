@@ -1,0 +1,56 @@
+[package]
+name = "optical-entropy"
+version = "0.1.0"
+edition = "2021"
+authors = ["Optical Entropy Contributors"]
+description = "Physical entropy source using optical phenomena for CSPRNG reseeding"
+license = "MIT"
+repository = "https://github.com/yourusername/optical-entropy-generation"
+readme = "README.md"
+keywords = ["entropy", "cryptography", "random", "csprng"]
+categories = ["cryptography", "hardware-support"]
+
+[dependencies]
+# Cryptographic primitives (well-established, audited)
+blake3 = "1.5"
+sha2 = "0.10"
+rand_chacha = "0.3"
+rand_core = "0.6"
+
+# Camera capture (platform abstraction)
+nokhwa = { version = "0.10", features = ["input-native"], optional = true }
+
+# Serialization and configuration
+serde = { version = "1.0", features = ["derive"] }
+toml = "0.8"
+
+# Logging and diagnostics
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Error handling
+thiserror = "1.0"
+
+# Time handling
+chrono = { version = "0.4", features = ["serde"] }
+
+[dev-dependencies]
+# Testing utilities
+proptest = "1.4"
+criterion = "0.5"
+
+[features]
+default = []
+camera = ["nokhwa"]
+
+[[bin]]
+name = "optical-entropy"
+path = "src/main.rs"
+
+[lib]
+name = "optical_entropy"
+path = "src/lib.rs"
+
+[profile.release]
+lto = true
+codegen-units = 1
