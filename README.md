@@ -97,9 +97,13 @@ If entropy quality falls below defined thresholds, reseeding is suspended.
 ## Repository Structure
 
 /capture - Camera input and frame handling
+
 /extraction - Bit harvesting and decorrelation
+
 /conditioning - Hashing and CSPRNG reseeding
+
 /analysis - Entropy testing and monitoring
+
 /docs - Setup photos and diagrams
 
 
