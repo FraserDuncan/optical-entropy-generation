@@ -41,6 +41,18 @@ impl ConditionedSeed {
     pub fn entropy_estimate(&self) -> usize {
         self.entropy_estimate
     }
+
+    /// Creates a seed for testing purposes only.
+    ///
+    /// This bypasses the normal conditioning pipeline and should
+    /// never be used in production code.
+    #[cfg(test)]
+    pub(crate) fn new_for_testing(data: [u8; 32], entropy_estimate: usize) -> Self {
+        Self {
+            data,
+            entropy_estimate,
+        }
+    }
 }
 
 impl std::fmt::Debug for ConditionedSeed {
