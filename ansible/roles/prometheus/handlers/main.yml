@@ -1,0 +1,18 @@
+---
+# Prometheus handlers
+
+- name: Daemon reload
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: Restart prometheus
+  ansible.builtin.systemd:
+    name: prometheus
+    state: restarted
+
+- name: Reload prometheus
+  ansible.builtin.uri:
+    url: "http://localhost:9091/-/reload"
+    method: POST
+    status_code: 200
+  ignore_errors: true

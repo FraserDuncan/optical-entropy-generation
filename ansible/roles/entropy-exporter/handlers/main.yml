@@ -1,0 +1,22 @@
+---
+# Entropy exporter handlers
+
+- name: Daemon reload
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: Restart entropy exporter
+  ansible.builtin.systemd:
+    name: entropy-exporter
+    state: restarted
+
+- name: Rebuild entropy exporter
+  ansible.builtin.shell: |
+    source /root/.cargo/env
+    cargo build --release --features {{ entropy_rust_features }}
+  args:
+    chdir: "{{ entropy_install_dir }}/src"
+  environment:
+    CARGO_HOME: /root/.cargo
+  become: true
+  notify: Restart entropy exporter

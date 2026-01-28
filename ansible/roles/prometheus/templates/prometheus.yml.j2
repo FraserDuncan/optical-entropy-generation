@@ -1,0 +1,35 @@
+# Prometheus configuration - managed by Ansible
+# Do not edit manually
+
+global:
+  scrape_interval: {{ prometheus_scrape_interval }}
+  evaluation_interval: {{ prometheus_evaluation_interval }}
+  external_labels:
+    monitor: 'optical-entropy'
+{% if prometheus_external_url %}
+    external_url: {{ prometheus_external_url }}
+{% endif %}
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - localhost:9093
+
+rule_files:
+  - "{{ prometheus_config_dir }}/rules/*.yml"
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9091']
+
+  - job_name: 'optical-entropy'
+    static_configs:
+      - targets:
+{% for target in prometheus_entropy_targets %}
+        - '{{ target }}'
+{% endfor %}
+    scrape_interval: 5s
+    scrape_timeout: 4s
+    metrics_path: /metrics
