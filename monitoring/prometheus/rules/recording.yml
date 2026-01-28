@@ -1,0 +1,89 @@
+# Recording rules for Optical Entropy Generation
+#
+# These rules pre-compute commonly used aggregations for dashboard queries,
+# reducing query latency and Prometheus load.
+
+groups:
+  - name: entropy_rates
+    interval: 30s
+    rules:
+      # Samples analyzed per second (1m average)
+      - record: optical_entropy:samples_per_second:rate1m
+        expr: rate(optical_entropy_total_samples[1m])
+
+      # Samples analyzed per second (5m average, smoother)
+      - record: optical_entropy:samples_per_second:rate5m
+        expr: rate(optical_entropy_total_samples[5m])
+
+      # Bits accumulated per second
+      - record: optical_entropy:bits_per_second:rate1m
+        expr: rate(optical_entropy_pool_total_bits_added[1m])
+
+      # Bits accumulated per second (5m average)
+      - record: optical_entropy:bits_per_second:rate5m
+        expr: rate(optical_entropy_pool_total_bits_added[5m])
+
+      # Pool extractions per hour
+      - record: optical_entropy:extractions_per_hour:rate1h
+        expr: rate(optical_entropy_pool_extractions_total[1h]) * 3600
+
+      # Reseeds per hour
+      - record: optical_entropy:reseeds_per_hour:rate1h
+        expr: rate(optical_entropy_csprng_reseed_total[1h]) * 3600
+
+  - name: entropy_health_summary
+    interval: 1m
+    rules:
+      # Health score: 1 if healthy, 0 if unhealthy (for averaging over time)
+      - record: optical_entropy:health_score:avg5m
+        expr: avg_over_time(optical_entropy_health_status[5m])
+
+      # Health score over 1 hour (percentage of time healthy)
+      - record: optical_entropy:health_score:avg1h
+        expr: avg_over_time(optical_entropy_health_status[1h])
+
+      # Health score over 24 hours
+      - record: optical_entropy:health_score:avg24h
+        expr: avg_over_time(optical_entropy_health_status[24h])
+
+      # Maximum unhealthy streak in last hour
+      - record: optical_entropy:max_unhealthy_streak:max1h
+        expr: max_over_time(optical_entropy_consecutive_unhealthy[1h])
+
+  - name: entropy_statistics_summary
+    interval: 1m
+    rules:
+      # Average bit bias over 5 minutes
+      - record: optical_entropy:bit_bias:avg5m
+        expr: avg_over_time(optical_entropy_bit_bias[5m])
+
+      # Average variance over 5 minutes
+      - record: optical_entropy:variance:avg5m
+        expr: avg_over_time(optical_entropy_variance[5m])
+
+      # Average autocorrelation over 5 minutes
+      - record: optical_entropy:autocorrelation:avg5m
+        expr: avg_over_time(optical_entropy_autocorrelation[5m])
+
+      # Maximum absolute bit bias in last hour (worst case)
+      - record: optical_entropy:bit_bias_abs:max1h
+        expr: max_over_time(abs(optical_entropy_bit_bias)[1h:1m])
+
+      # Minimum variance in last hour (worst case)
+      - record: optical_entropy:variance:min1h
+        expr: min_over_time(optical_entropy_variance[1h])
+
+      # Maximum absolute autocorrelation in last hour (worst case)
+      - record: optical_entropy:autocorrelation_abs:max1h
+        expr: max_over_time(abs(optical_entropy_autocorrelation)[1h:1m])
+
+  - name: csprng_summary
+    interval: 1m
+    rules:
+      # Average bytes generated per second
+      - record: optical_entropy:csprng_bytes_per_second:rate5m
+        expr: rate(optical_entropy_csprng_bytes_since_reseed[5m])
+
+      # Time since last reseed (approximation based on rate)
+      - record: optical_entropy:csprng_time_since_reseed:estimate
+        expr: optical_entropy_csprng_bytes_since_reseed / (rate(optical_entropy_csprng_bytes_since_reseed[5m]) + 0.001)

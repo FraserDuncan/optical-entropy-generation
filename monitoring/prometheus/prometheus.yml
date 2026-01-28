@@ -1,0 +1,46 @@
+# Prometheus configuration for Optical Entropy Generation monitoring
+#
+# This configuration scrapes metrics from the entropy generation system
+# and provides alerting for quality degradation.
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'optical-entropy'
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+# Rule files for alerting and recording
+rule_files:
+  - "rules/*.yml"
+
+# Scrape configurations
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Optical entropy generator metrics
+  - job_name: 'optical-entropy'
+    static_configs:
+      - targets: ['entropy-generator:9090']
+        labels:
+          instance: 'primary'
+    # Scrape more frequently for entropy monitoring
+    scrape_interval: 5s
+    scrape_timeout: 4s
+    metrics_path: /metrics
+    scheme: http
+
+# Storage configuration
+storage:
+  tsdb:
+    retention.time: 30d
+    retention.size: 10GB
