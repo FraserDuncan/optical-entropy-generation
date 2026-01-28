@@ -11,6 +11,12 @@ monitoring/
 │   └── rules/
 │       ├── alerts.yml      # Alerting rules
 │       └── recording.yml   # Recording rules for pre-aggregation
+├── grafana/
+│   ├── dashboards/
+│   │   └── entropy-overview.json   # Main operational dashboard
+│   └── provisioning/
+│       ├── dashboards/default.yml  # Dashboard provisioning
+│       └── datasources/prometheus.yml
 └── README.md
 ```
 
@@ -74,6 +80,29 @@ Pre-computed metrics for efficient dashboard queries:
 
 3. Access Prometheus UI at http://localhost:9091
 
+## Grafana Dashboards
+
+### Entropy Overview Dashboard
+
+The main operational dashboard provides real-time visibility into:
+
+| Panel | Description |
+|-------|-------------|
+| Health Status | Current healthy/unhealthy state (color-coded) |
+| Entropy Rate | Bits per second over time (1m and 5m averages) |
+| Healthy/Unhealthy Streak | Consecutive sample counts |
+| Total Reseeds | CSPRNG reseed counter |
+| Bytes Since Reseed | Data generated since last reseed |
+| Bit Bias | Statistical test with threshold lines |
+| Byte Variance | Statistical test with threshold lines |
+| Autocorrelation | Statistical test with threshold lines |
+| Pool Size | Gauge showing current pool fill level |
+| Total Extractions/Samples | Counter statistics |
+
+### Dashboard Provisioning
+
+Dashboards are automatically loaded via Grafana provisioning. Place JSON files in `grafana/dashboards/` and they'll be available on startup.
+
 ## Docker Compose Example
 
 ```yaml
@@ -92,4 +121,16 @@ services:
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.retention.time=30d'
+
+  grafana:
+    image: grafana/grafana:latest
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
 ```
