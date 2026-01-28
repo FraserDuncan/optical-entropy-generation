@@ -38,9 +38,3 @@ scrape_configs:
     scrape_timeout: 4s
     metrics_path: /metrics
     scheme: http
-
-# Storage configuration
-storage:
-  tsdb:
-    retention.time: 30d
-    retention.size: 10GB
