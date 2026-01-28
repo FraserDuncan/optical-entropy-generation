@@ -67,6 +67,7 @@ pub mod analysis;
 pub mod capture;
 pub mod conditioning;
 pub mod extraction;
+pub mod metrics;
 pub mod reseeding;
 
 // Re-export commonly used types at crate root
