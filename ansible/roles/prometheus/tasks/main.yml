@@ -1,6 +1,4 @@
 ---
-# Prometheus installation and configuration tasks
-
 - name: Create prometheus group
   ansible.builtin.group:
     name: "{{ prometheus_group }}"

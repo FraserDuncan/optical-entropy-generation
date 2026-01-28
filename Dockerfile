@@ -1,4 +1,3 @@
-# Multi-stage build for Optical Entropy Generator
 FROM rust:1.75-bookworm AS builder
 
 WORKDIR /build
@@ -7,7 +6,6 @@ COPY src/ src/
 
 RUN cargo build --release --features metrics
 
-# Runtime image
 FROM debian:bookworm-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends \

@@ -1,4 +1,3 @@
-# Prometheus datasource provisioning
 apiVersion: 1
 
 datasources:

@@ -1,15 +1,7 @@
-# Alerting rules for Optical Entropy Generation
-#
-# These alerts monitor entropy quality and system health.
-# Severity levels:
-#   - critical: Immediate attention required, potential security impact
-#   - warning: Degraded operation, investigate soon
-
 groups:
   - name: entropy_quality
     interval: 30s
     rules:
-      # Critical: Entropy quality has dropped to dangerous levels
       - alert: EntropyQualityCritical
         expr: optical_entropy_health_status == 0 and optical_entropy_consecutive_unhealthy >= 10
         for: 2m
@@ -20,7 +12,6 @@ groups:
           description: "Entropy source has been unhealthy for {{ $value }} consecutive samples over 2+ minutes. CSPRNG reseeding is suspended."
           runbook_url: "https://github.com/FraserDuncan/optical-entropy-generation/wiki/Runbook-EntropyQualityCritical"
 
-      # Critical: No entropy being generated
       - alert: EntropyGenerationStopped
         expr: rate(optical_entropy_total_samples[5m]) == 0
         for: 1m
@@ -31,7 +22,6 @@ groups:
           description: "The entropy generator has not produced any samples in the last 5 minutes. Check camera and capture pipeline."
           runbook_url: "https://github.com/FraserDuncan/optical-entropy-generation/wiki/Runbook-EntropyGenerationStopped"
 
-      # Warning: Entropy quality degraded
       - alert: EntropyQualityDegraded
         expr: optical_entropy_health_status == 0
         for: 5m
@@ -42,7 +32,6 @@ groups:
           description: "Entropy source has been unhealthy for 5+ minutes. Current streak: {{ $value }} unhealthy samples."
           runbook_url: "https://github.com/FraserDuncan/optical-entropy-generation/wiki/Runbook-EntropyQualityDegraded"
 
-      # Warning: High bit bias detected
       - alert: EntropyHighBitBias
         expr: abs(optical_entropy_bit_bias) > 0.1
         for: 5m
@@ -52,7 +41,6 @@ groups:
           summary: "High bit bias in entropy source"
           description: "Bit bias is {{ $value | printf \"%.4f\" }}, exceeding 0.1 threshold. Check camera exposure and lighting conditions."
 
-      # Warning: Low variance detected
       - alert: EntropyLowVariance
         expr: optical_entropy_variance < 500 and optical_entropy_variance > 0
         for: 5m
@@ -62,7 +50,6 @@ groups:
           summary: "Low variance in entropy source"
           description: "Byte variance is {{ $value | printf \"%.1f\" }}, below 500 threshold. Optical noise may be insufficient."
 
-      # Warning: High autocorrelation detected
       - alert: EntropyHighAutocorrelation
         expr: abs(optical_entropy_autocorrelation) > 0.3
         for: 5m
@@ -75,7 +62,6 @@ groups:
   - name: csprng_health
     interval: 30s
     rules:
-      # Warning: CSPRNG hasn't been reseeded recently
       - alert: CSPRNGStaleReseed
         expr: time() - (optical_entropy_csprng_reseed_total > 0) > 3600
         labels:
@@ -85,7 +71,6 @@ groups:
           description: "Last reseed was over 1 hour ago. Total reseeds: {{ $value }}. Check entropy quality and pool accumulation."
           runbook_url: "https://github.com/FraserDuncan/optical-entropy-generation/wiki/Runbook-CSPRNGStaleReseed"
 
-      # Info: High bytes generated since reseed
       - alert: CSPRNGHighBytesGenerated
         expr: optical_entropy_csprng_bytes_since_reseed > 1073741824
         labels:
@@ -97,7 +82,6 @@ groups:
   - name: pool_health
     interval: 30s
     rules:
-      # Warning: Pool not accumulating entropy
       - alert: EntropyPoolStagnant
         expr: rate(optical_entropy_pool_total_bits_added[10m]) == 0 and optical_entropy_total_samples > 0
         for: 5m
@@ -107,7 +91,6 @@ groups:
           summary: "Entropy pool not accumulating"
           description: "No new entropy has been added to the pool in 10+ minutes despite samples being analyzed."
 
-      # Info: Pool near capacity (informational, not an issue)
       - alert: EntropyPoolNearCapacity
         expr: optical_entropy_pool_size_bytes > 60000
         labels:
