@@ -1,0 +1,28 @@
+[Unit]
+Description=Optical Entropy Generator with Prometheus Metrics
+Documentation=https://github.com/FraserDuncan/optical-entropy-generation
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User={{ entropy_user }}
+Group={{ entropy_group }}
+ExecStart={{ entropy_install_dir }}/optical-entropy
+Restart=always
+RestartSec=5
+
+Environment=RUST_LOG=info
+Environment=METRICS_PORT={{ entropy_exporter_port }}
+
+# Security hardening
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths={{ entropy_data_dir }}
+
+# Camera access
+SupplementaryGroups=video
+
+[Install]
+WantedBy=multi-user.target

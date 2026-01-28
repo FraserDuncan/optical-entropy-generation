@@ -1,0 +1,19 @@
+---
+# Grafana role defaults
+
+grafana_version: "10.2.0"
+grafana_user: grafana
+grafana_group: grafana
+
+grafana_install_dir: /opt/grafana
+grafana_config_dir: /etc/grafana
+grafana_data_dir: /var/lib/grafana
+
+grafana_http_port: 3000
+grafana_admin_user: admin
+grafana_admin_password: admin
+
+grafana_allow_anonymous: true
+grafana_anonymous_role: Viewer
+
+prometheus_url: "http://localhost:9091"

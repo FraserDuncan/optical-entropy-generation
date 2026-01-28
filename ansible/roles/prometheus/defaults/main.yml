@@ -1,0 +1,23 @@
+---
+# Prometheus role defaults
+
+prometheus_version: "2.48.0"
+prometheus_user: prometheus
+prometheus_group: prometheus
+
+prometheus_install_dir: /opt/prometheus
+prometheus_config_dir: /etc/prometheus
+prometheus_data_dir: /var/lib/prometheus
+
+prometheus_listen_address: "0.0.0.0:9091"
+prometheus_external_url: ""
+
+prometheus_retention_time: "30d"
+prometheus_retention_size: "10GB"
+
+prometheus_scrape_interval: "15s"
+prometheus_evaluation_interval: "15s"
+
+# Entropy generator targets
+prometheus_entropy_targets:
+  - "entropy-primary:9090"

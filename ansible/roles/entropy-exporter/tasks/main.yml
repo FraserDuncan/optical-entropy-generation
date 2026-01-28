@@ -1,0 +1,104 @@
+---
+# Entropy exporter installation and configuration tasks
+
+- name: Create entropy group
+  ansible.builtin.group:
+    name: "{{ entropy_group }}"
+    system: true
+    state: present
+
+- name: Create entropy user
+  ansible.builtin.user:
+    name: "{{ entropy_user }}"
+    group: "{{ entropy_group }}"
+    system: true
+    shell: /usr/sbin/nologin
+    createhome: false
+    groups:
+      - video  # For camera access
+
+- name: Create entropy directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ entropy_user }}"
+    group: "{{ entropy_group }}"
+    mode: '0755'
+  loop:
+    - "{{ entropy_install_dir }}"
+    - "{{ entropy_config_dir }}"
+    - "{{ entropy_data_dir }}"
+
+- name: Install Rust toolchain
+  ansible.builtin.shell: |
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+  args:
+    creates: /root/.cargo/bin/rustc
+  become: true
+
+- name: Install build dependencies
+  ansible.builtin.apt:
+    name:
+      - build-essential
+      - pkg-config
+      - libv4l-dev
+      - v4l-utils
+      - git
+    state: present
+    update_cache: true
+  when: ansible_os_family == "Debian"
+
+- name: Clone entropy repository
+  ansible.builtin.git:
+    repo: "{{ entropy_repo_url }}"
+    dest: "{{ entropy_install_dir }}/src"
+    version: "{{ entropy_repo_version }}"
+    force: true
+  register: repo_clone
+  notify: Rebuild entropy exporter
+
+- name: Build entropy exporter
+  ansible.builtin.shell: |
+    source /root/.cargo/env
+    cargo build --release --features {{ entropy_rust_features }}
+  args:
+    chdir: "{{ entropy_install_dir }}/src"
+    creates: "{{ entropy_install_dir }}/src/target/release/optical-entropy"
+  environment:
+    CARGO_HOME: /root/.cargo
+  become: true
+
+- name: Copy binary to install directory
+  ansible.builtin.copy:
+    src: "{{ entropy_install_dir }}/src/target/release/optical-entropy"
+    dest: "{{ entropy_install_dir }}/optical-entropy"
+    remote_src: true
+    owner: "{{ entropy_user }}"
+    group: "{{ entropy_group }}"
+    mode: '0755'
+  notify: Restart entropy exporter
+
+- name: Create entropy exporter systemd service
+  ansible.builtin.template:
+    src: entropy-exporter.service.j2
+    dest: /etc/systemd/system/entropy-exporter.service
+    mode: '0644'
+  notify:
+    - Daemon reload
+    - Restart entropy exporter
+
+- name: Enable and start entropy exporter
+  ansible.builtin.systemd:
+    name: entropy-exporter
+    enabled: true
+    state: started
+
+- name: Wait for entropy exporter to be ready
+  ansible.builtin.uri:
+    url: "http://localhost:{{ entropy_exporter_port }}/health"
+    status_code: 200
+  register: result
+  until: result.status == 200
+  retries: 30
+  delay: 2
+  ignore_errors: true

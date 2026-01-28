@@ -1,0 +1,25 @@
+[Unit]
+Description=Grafana Dashboard
+Documentation=https://grafana.com/docs/
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User={{ grafana_user }}
+Group={{ grafana_group }}
+ExecStart={{ grafana_install_dir }}/bin/grafana-server \
+    --config={{ grafana_config_dir }}/grafana.ini \
+    --homepath={{ grafana_install_dir }}
+Restart=always
+RestartSec=5
+
+# Security hardening
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths={{ grafana_data_dir }}
+ReadWritePaths=/var/log/grafana
+
+[Install]
+WantedBy=multi-user.target

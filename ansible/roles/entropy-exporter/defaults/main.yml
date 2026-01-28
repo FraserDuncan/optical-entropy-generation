@@ -1,0 +1,16 @@
+---
+# Entropy exporter role defaults
+
+entropy_user: entropy
+entropy_group: entropy
+
+entropy_install_dir: /opt/optical-entropy
+entropy_config_dir: /etc/optical-entropy
+entropy_data_dir: /var/lib/optical-entropy
+
+entropy_exporter_port: 9090
+entropy_rust_features: "metrics"
+
+# Git repository
+entropy_repo_url: "https://github.com/FraserDuncan/optical-entropy-generation.git"
+entropy_repo_version: "main"

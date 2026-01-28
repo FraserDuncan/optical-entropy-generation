@@ -1,0 +1,109 @@
+---
+# Grafana installation and configuration tasks
+
+- name: Create grafana group
+  ansible.builtin.group:
+    name: "{{ grafana_group }}"
+    system: true
+    state: present
+
+- name: Create grafana user
+  ansible.builtin.user:
+    name: "{{ grafana_user }}"
+    group: "{{ grafana_group }}"
+    system: true
+    shell: /usr/sbin/nologin
+    createhome: false
+
+- name: Create grafana directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ grafana_user }}"
+    group: "{{ grafana_group }}"
+    mode: '0755'
+  loop:
+    - "{{ grafana_install_dir }}"
+    - "{{ grafana_config_dir }}"
+    - "{{ grafana_config_dir }}/provisioning/dashboards"
+    - "{{ grafana_config_dir }}/provisioning/datasources"
+    - "{{ grafana_data_dir }}"
+    - "{{ grafana_data_dir }}/dashboards"
+
+- name: Download Grafana
+  ansible.builtin.get_url:
+    url: "https://dl.grafana.com/oss/release/grafana-{{ grafana_version }}.linux-amd64.tar.gz"
+    dest: "/tmp/grafana-{{ grafana_version }}.tar.gz"
+    mode: '0644'
+  register: grafana_download
+
+- name: Extract Grafana
+  ansible.builtin.unarchive:
+    src: "/tmp/grafana-{{ grafana_version }}.tar.gz"
+    dest: "{{ grafana_install_dir }}"
+    remote_src: true
+    extra_opts: [--strip-components=1]
+    owner: "{{ grafana_user }}"
+    group: "{{ grafana_group }}"
+  when: grafana_download.changed
+  notify: Restart grafana
+
+- name: Copy Grafana configuration
+  ansible.builtin.template:
+    src: grafana.ini.j2
+    dest: "{{ grafana_config_dir }}/grafana.ini"
+    owner: "{{ grafana_user }}"
+    group: "{{ grafana_group }}"
+    mode: '0644'
+  notify: Restart grafana
+
+- name: Copy datasource provisioning
+  ansible.builtin.template:
+    src: datasources.yml.j2
+    dest: "{{ grafana_config_dir }}/provisioning/datasources/prometheus.yml"
+    owner: "{{ grafana_user }}"
+    group: "{{ grafana_group }}"
+    mode: '0644'
+  notify: Restart grafana
+
+- name: Copy dashboard provisioning
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../monitoring/grafana/provisioning/dashboards/"
+    dest: "{{ grafana_config_dir }}/provisioning/dashboards/"
+    owner: "{{ grafana_user }}"
+    group: "{{ grafana_group }}"
+    mode: '0644'
+  notify: Restart grafana
+
+- name: Copy dashboards
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../monitoring/grafana/dashboards/"
+    dest: "{{ grafana_data_dir }}/dashboards/"
+    owner: "{{ grafana_user }}"
+    group: "{{ grafana_group }}"
+    mode: '0644'
+  notify: Restart grafana
+
+- name: Create Grafana systemd service
+  ansible.builtin.template:
+    src: grafana.service.j2
+    dest: /etc/systemd/system/grafana.service
+    mode: '0644'
+  notify:
+    - Daemon reload
+    - Restart grafana
+
+- name: Enable and start Grafana
+  ansible.builtin.systemd:
+    name: grafana
+    enabled: true
+    state: started
+
+- name: Wait for Grafana to be ready
+  ansible.builtin.uri:
+    url: "http://localhost:{{ grafana_http_port }}/api/health"
+    status_code: 200
+  register: result
+  until: result.status == 200
+  retries: 30
+  delay: 2
