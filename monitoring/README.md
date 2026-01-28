@@ -17,6 +17,10 @@ monitoring/
 │   └── provisioning/
 │       ├── dashboards/default.yml  # Dashboard provisioning
 │       └── datasources/prometheus.yml
+├── alertmanager/
+│   ├── alertmanager.yml            # Alertmanager configuration
+│   └── templates/
+│       └── email.tmpl              # Email notification template
 └── README.md
 ```
 
@@ -103,6 +107,45 @@ The main operational dashboard provides real-time visibility into:
 
 Dashboards are automatically loaded via Grafana provisioning. Place JSON files in `grafana/dashboards/` and they'll be available on startup.
 
+## Alertmanager Configuration
+
+### Notification Channels
+
+Alerts are routed based on severity:
+
+| Severity | Channels | Response Time |
+|----------|----------|---------------|
+| Critical | Email + Slack + Webhook | Immediate (10s group wait) |
+| Warning | Slack | Standard (1m group wait) |
+| Info | Webhook only | Low priority (5m group wait) |
+
+### Inhibition Rules
+
+To reduce alert noise, the following inhibitions are configured:
+
+- `EntropyQualityCritical` suppresses `EntropyQualityDegraded`
+- `EntropyGenerationStopped` suppresses pool/reseed alerts
+
+### Configuration
+
+1. Set environment variables:
+   ```bash
+   export SLACK_WEBHOOK_URL="https://hooks.slack.com/services/..."
+   export SMTP_PASSWORD="your-smtp-password"
+   ```
+
+2. Update `alertmanager.yml`:
+   - Configure SMTP settings for your mail server
+   - Set Slack channel names
+   - Configure webhook endpoints
+
+### Silencing Alerts
+
+During maintenance, create silences via the Alertmanager UI:
+```
+http://localhost:9093/#/silences/new
+```
+
 ## Docker Compose Example
 
 ```yaml
@@ -133,4 +176,16 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD=admin
       - GF_AUTH_ANONYMOUS_ENABLED=true
       - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+
+  alertmanager:
+    image: prom/alertmanager:latest
+    volumes:
+      - ./monitoring/alertmanager:/etc/alertmanager
+    ports:
+      - "9093:9093"
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+    environment:
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
 ```
