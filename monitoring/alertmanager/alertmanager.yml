@@ -1,0 +1,137 @@
+# Alertmanager configuration for Optical Entropy Generation
+#
+# This configuration routes alerts based on severity and provides
+# notification through multiple channels.
+
+global:
+  # Default SMTP settings (configure for your environment)
+  smtp_smarthost: 'smtp.example.com:587'
+  smtp_from: 'alertmanager@example.com'
+  smtp_auth_username: 'alertmanager'
+  smtp_auth_password: ''  # Use environment variable SMTP_PASSWORD
+  smtp_require_tls: true
+
+  # Slack webhook URL (configure for your environment)
+  slack_api_url: ''  # Use environment variable SLACK_WEBHOOK_URL
+
+  # Default resolve timeout
+  resolve_timeout: 5m
+
+# Alert templates
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'
+
+# Routing tree
+route:
+  # Default receiver
+  receiver: 'default-receiver'
+
+  # Group alerts by these labels
+  group_by: ['alertname', 'severity']
+
+  # Wait before sending first notification for a group
+  group_wait: 30s
+
+  # Wait before sending updates to a group
+  group_interval: 5m
+
+  # Wait before resending a notification
+  repeat_interval: 4h
+
+  # Child routes for specific severities
+  routes:
+    # Critical alerts: immediate notification via all channels
+    - match:
+        severity: critical
+      receiver: 'critical-alerts'
+      group_wait: 10s
+      group_interval: 1m
+      repeat_interval: 1h
+      continue: false
+
+    # Warning alerts: standard notification
+    - match:
+        severity: warning
+      receiver: 'warning-alerts'
+      group_wait: 1m
+      group_interval: 10m
+      repeat_interval: 4h
+      continue: false
+
+    # Info alerts: low priority
+    - match:
+        severity: info
+      receiver: 'info-alerts'
+      group_wait: 5m
+      group_interval: 30m
+      repeat_interval: 24h
+      continue: false
+
+# Inhibition rules
+inhibit_rules:
+  # If EntropyQualityCritical fires, suppress EntropyQualityDegraded
+  - source_match:
+      alertname: 'EntropyQualityCritical'
+    target_match:
+      alertname: 'EntropyQualityDegraded'
+    equal: ['instance']
+
+  # If EntropyGenerationStopped fires, suppress pool/reseed alerts
+  - source_match:
+      alertname: 'EntropyGenerationStopped'
+    target_match_re:
+      alertname: '(EntropyPoolStagnant|CSPRNGStaleReseed)'
+    equal: ['instance']
+
+# Receivers
+receivers:
+  # Default receiver (catches unrouted alerts)
+  - name: 'default-receiver'
+    webhook_configs:
+      - url: 'http://localhost:5001/webhook'
+        send_resolved: true
+
+  # Critical alerts: email + Slack + webhook
+  - name: 'critical-alerts'
+    email_configs:
+      - to: 'oncall@example.com'
+        send_resolved: true
+        headers:
+          Subject: '[CRITICAL] Optical Entropy: {{ .GroupLabels.alertname }}'
+    slack_configs:
+      - channel: '#entropy-alerts-critical'
+        send_resolved: true
+        title: '{{ if eq .Status "firing" }}:rotating_light:{{ else }}:white_check_mark:{{ end }} {{ .GroupLabels.alertname }}'
+        text: |
+          {{ range .Alerts }}
+          *Status:* {{ .Status | toUpper }}
+          *Alert:* {{ .Labels.alertname }}
+          *Summary:* {{ .Annotations.summary }}
+          *Description:* {{ .Annotations.description }}
+          {{ if .Annotations.runbook_url }}*Runbook:* {{ .Annotations.runbook_url }}{{ end }}
+          {{ end }}
+        actions:
+          - type: button
+            text: 'View in Grafana'
+            url: 'http://grafana:3000/d/entropy-overview'
+          - type: button
+            text: 'Silence Alert'
+            url: '{{ template "__alertmanagerURL" . }}/#/silences/new?filter=%7Balertname%3D%22{{ .GroupLabels.alertname }}%22%7D'
+
+  # Warning alerts: Slack only
+  - name: 'warning-alerts'
+    slack_configs:
+      - channel: '#entropy-alerts'
+        send_resolved: true
+        title: '{{ if eq .Status "firing" }}:warning:{{ else }}:white_check_mark:{{ end }} {{ .GroupLabels.alertname }}'
+        text: |
+          {{ range .Alerts }}
+          *Summary:* {{ .Annotations.summary }}
+          *Description:* {{ .Annotations.description }}
+          {{ end }}
+
+  # Info alerts: webhook only (for logging)
+  - name: 'info-alerts'
+    webhook_configs:
+      - url: 'http://localhost:5001/webhook'
+        send_resolved: true
