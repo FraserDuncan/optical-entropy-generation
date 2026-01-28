@@ -1,0 +1,14 @@
+# Dashboard provisioning
+apiVersion: 1
+
+providers:
+  - name: 'Optical Entropy'
+    orgId: 1
+    folder: 'Entropy Monitoring'
+    folderUid: 'entropy-monitoring'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards
