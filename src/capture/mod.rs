@@ -8,6 +8,8 @@ mod camera;
 mod config;
 mod frame;
 
-pub use camera::{Camera, CameraError, MockCamera};
-pub use config::CaptureConfig;
+pub use camera::{Camera, CameraError, CameraInfo, MockCamera};
+#[cfg(feature = "camera")]
+pub use camera::NokhwaCamera;
+pub use config::{CaptureConfig, ConfigError, FileConfig, HealthConfig, OutputConfig};
 pub use frame::Frame;

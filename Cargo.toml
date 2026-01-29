@@ -31,6 +31,12 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 # Error handling
 thiserror = "1.0"
 
+# CLI argument parsing
+clap = { version = "4.4", features = ["derive"] }
+
+# Signal handling
+ctrlc = "3.4"
+
 # Time handling
 chrono = { version = "0.4", features = ["serde"] }
 

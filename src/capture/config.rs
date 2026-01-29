@@ -5,6 +5,7 @@
 //! unpredictable correlations.
 
 use serde::{Deserialize, Serialize};
+use std::path::Path;
 
 /// Configuration for camera capture.
 ///
@@ -76,6 +77,78 @@ pub enum ConfigError {
     InvalidExposure,
     #[error("invalid frame rate (must be 1-120 fps)")]
     InvalidFrameRate,
+    #[error("failed to read config file: {0}")]
+    FileReadError(String),
+    #[error("failed to parse config file: {0}")]
+    ParseError(String),
+}
+
+/// Full configuration file format.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct FileConfig {
+    #[serde(default)]
+    pub capture: CaptureConfig,
+    #[serde(default)]
+    pub health: HealthConfig,
+    #[serde(default)]
+    pub output: OutputConfig,
+}
+
+/// Health monitoring configuration.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HealthConfig {
+    /// Minimum consecutive healthy samples before allowing reseed.
+    pub min_healthy_streak: u32,
+    /// Maximum bit bias allowed (0.0 to 0.5).
+    pub max_bias: f64,
+    /// Minimum variance required.
+    pub min_variance: f64,
+    /// Maximum autocorrelation allowed.
+    pub max_autocorrelation: f64,
+}
+
+impl Default for HealthConfig {
+    fn default() -> Self {
+        Self {
+            min_healthy_streak: 3,
+            max_bias: 0.1,
+            min_variance: 100.0,
+            max_autocorrelation: 0.5,
+        }
+    }
+}
+
+/// Output configuration.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OutputConfig {
+    /// Run continuously (true) or process fixed number of frames (false).
+    pub continuous: bool,
+    /// Number of frames to process if not continuous.
+    pub frame_count: u32,
+    /// Metrics server port (0 to disable).
+    pub metrics_port: u16,
+}
+
+impl Default for OutputConfig {
+    fn default() -> Self {
+        Self {
+            continuous: false,
+            frame_count: 100,
+            metrics_port: 9090,
+        }
+    }
+}
+
+impl FileConfig {
+    /// Loads configuration from a TOML file.
+    pub fn from_file(path: impl AsRef<Path>) -> Result<Self, ConfigError> {
+        let content = std::fs::read_to_string(path.as_ref())
+            .map_err(|e| ConfigError::FileReadError(e.to_string()))?;
+        let config: FileConfig =
+            toml::from_str(&content).map_err(|e| ConfigError::ParseError(e.to_string()))?;
+        config.capture.validate()?;
+        Ok(config)
+    }
 }
 
 #[cfg(test)]
