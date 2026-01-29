@@ -90,6 +90,162 @@ impl Camera for MockCamera {
     }
 }
 
+/// Real camera implementation using nokhwa.
+#[cfg(feature = "camera")]
+pub mod real {
+    use super::*;
+    use nokhwa::pixel_format::RgbFormat;
+    use nokhwa::utils::{
+        CameraFormat, CameraIndex, FrameFormat, RequestedFormat, RequestedFormatType, Resolution,
+    };
+    use nokhwa::Camera as NokhwaCamera_;
+
+    /// Camera implementation using nokhwa for real hardware access.
+    pub struct NokhwaCamera {
+        camera: Option<NokhwaCamera_>,
+        config: Option<CaptureConfig>,
+        sequence: u64,
+    }
+
+    impl NokhwaCamera {
+        pub fn new() -> Self {
+            Self {
+                camera: None,
+                config: None,
+                sequence: 0,
+            }
+        }
+
+        /// Lists all available camera devices.
+        pub fn list_devices() -> Result<Vec<CameraInfo>, CameraError> {
+            let devices = nokhwa::query(nokhwa::utils::ApiBackend::Auto)
+                .map_err(|e| CameraError::DeviceNotFound(e.to_string()))?;
+
+            Ok(devices
+                .into_iter()
+                .map(|info| CameraInfo {
+                    index: match info.index() {
+                        CameraIndex::Index(i) => *i,
+                        CameraIndex::String(s) => {
+                            s.parse().unwrap_or(0)
+                        }
+                    },
+                    name: info.human_name().to_string(),
+                    description: info.description().to_string(),
+                })
+                .collect())
+        }
+    }
+
+    impl Default for NokhwaCamera {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
+    impl Camera for NokhwaCamera {
+        fn open(&mut self, config: &CaptureConfig) -> Result<(), CameraError> {
+            config
+                .validate()
+                .map_err(|e| CameraError::ConfigFailed(e.to_string()))?;
+
+            let index = CameraIndex::Index(config.device_id);
+            let resolution = Resolution::new(config.width, config.height);
+
+            let format = RequestedFormat::new::<RgbFormat>(RequestedFormatType::Closest(
+                CameraFormat::new(resolution, FrameFormat::RAWRGB, config.fps),
+            ));
+
+            let mut camera = NokhwaCamera_::new(index, format)
+                .map_err(|e| CameraError::OpenFailed(e.to_string()))?;
+
+            camera
+                .open_stream()
+                .map_err(|e| CameraError::OpenFailed(e.to_string()))?;
+
+            tracing::info!(
+                "Opened camera {} at {}x{} @ {} fps",
+                config.device_id,
+                config.width,
+                config.height,
+                config.fps
+            );
+
+            self.camera = Some(camera);
+            self.config = Some(config.clone());
+            self.sequence = 0;
+
+            Ok(())
+        }
+
+        fn capture(&mut self) -> Result<Frame, CameraError> {
+            let camera = self.camera.as_mut().ok_or(CameraError::NotInitialized)?;
+            let config = self.config.as_ref().ok_or(CameraError::NotInitialized)?;
+
+            let frame = camera
+                .frame()
+                .map_err(|e| CameraError::CaptureFailed(e.to_string()))?;
+
+            let rgb_data = frame.decode_image::<RgbFormat>()
+                .map_err(|e| CameraError::CaptureFailed(e.to_string()))?;
+
+            // Convert to grayscale if configured
+            let pixels: Vec<u8> = if config.grayscale {
+                rgb_data
+                    .pixels()
+                    .map(|p| {
+                        // Standard luminance conversion
+                        let r = p[0] as f32;
+                        let g = p[1] as f32;
+                        let b = p[2] as f32;
+                        (0.299 * r + 0.587 * g + 0.114 * b) as u8
+                    })
+                    .collect()
+            } else {
+                rgb_data.into_raw()
+            };
+
+            self.sequence += 1;
+
+            Ok(Frame::new(
+                pixels,
+                config.width,
+                config.height,
+                self.sequence,
+            ))
+        }
+
+        fn is_open(&self) -> bool {
+            self.camera.is_some()
+        }
+
+        fn close(&mut self) {
+            if let Some(mut camera) = self.camera.take() {
+                let _ = camera.stop_stream();
+            }
+            self.config = None;
+            tracing::info!("Camera closed");
+        }
+    }
+
+    impl Drop for NokhwaCamera {
+        fn drop(&mut self) {
+            self.close();
+        }
+    }
+}
+
+/// Information about an available camera device.
+#[derive(Debug, Clone)]
+pub struct CameraInfo {
+    pub index: u32,
+    pub name: String,
+    pub description: String,
+}
+
+#[cfg(feature = "camera")]
+pub use real::NokhwaCamera;
+
 #[cfg(test)]
 mod tests {
     use super::*;

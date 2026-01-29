@@ -1,0 +1,56 @@
+# Optical Entropy Generator Configuration
+# Copy to config.toml and adjust for your setup
+
+[capture]
+# Camera device index (use 'optical-entropy list-devices' to find yours)
+device_id = 0
+
+# Frame dimensions - lower resolution reduces CPU load
+# Common options: 640x480, 320x240, 1280x720
+width = 640
+height = 480
+
+# Fixed exposure in microseconds (10000 = 10ms)
+# Lower values = less motion blur, higher noise
+# Higher values = more blur, less noise
+# 10ms is a good starting point
+exposure_us = 10000
+
+# Fixed gain (camera-specific units)
+# Start at 1, increase if image is too dark
+gain = 1
+
+# Target frames per second
+# Higher = more entropy samples, more CPU
+# 30 is usually sufficient
+fps = 30
+
+# Convert to grayscale (recommended - reduces data, entropy is in intensity)
+grayscale = true
+
+[health]
+# Minimum consecutive healthy samples before allowing CSPRNG reseed
+# Higher = more conservative, slower initial startup
+min_healthy_streak = 3
+
+# Maximum allowed bit bias (0.0 = perfect, 0.5 = completely biased)
+# Default 0.1 is conservative
+max_bias = 0.1
+
+# Minimum required variance in byte values
+# Higher = stricter quality requirement
+min_variance = 100.0
+
+# Maximum allowed autocorrelation (temporal predictability)
+# Lower = stricter requirement
+max_autocorrelation = 0.5
+
+[output]
+# Run continuously (true) or process fixed frame count (false)
+continuous = true
+
+# Number of frames if not continuous
+frame_count = 100
+
+# Prometheus metrics port (0 to disable)
+metrics_port = 9090
