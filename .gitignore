@@ -3,6 +3,11 @@
 .env.local
 .env*.local
 
+# Monitoring configs with sensitive data (emails, webhooks, passwords)
+# Use the .example files as templates
+monitoring/alertmanager/alertmanager.yml
+monitoring/grafana/grafana.ini
+
 # Agent instructions (contains project-specific guidance)
 claude.md
 CLAUDE.md

@@ -1,6 +1,4 @@
 ---
-# Alertmanager installation and configuration tasks
-
 - name: Create alertmanager group
   ansible.builtin.group:
     name: "{{ alertmanager_group }}"

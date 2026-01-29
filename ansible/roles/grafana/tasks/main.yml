@@ -1,6 +1,4 @@
 ---
-# Grafana installation and configuration tasks
-
 - name: Create grafana group
   ansible.builtin.group:
     name: "{{ grafana_group }}"

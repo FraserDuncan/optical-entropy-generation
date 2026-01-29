@@ -1,6 +1,4 @@
 ---
-# Entropy exporter installation and configuration tasks
-
 - name: Create entropy group
   ansible.builtin.group:
     name: "{{ entropy_group }}"
@@ -15,7 +13,7 @@
     shell: /usr/sbin/nologin
     createhome: false
     groups:
-      - video  # For camera access
+      - video
 
 - name: Create entropy directories
   ansible.builtin.file:

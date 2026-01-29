@@ -1,35 +1,17 @@
 ---
-# Playbook: Deploy Optical Entropy Monitoring Stack
-#
-# Deploys Prometheus, Grafana, and Alertmanager for entropy monitoring.
-#
-# Usage:
-#   ansible-playbook -i inventory/hosts.yml playbooks/monitoring.yml
-#
-# Tags:
-#   prometheus  - Deploy/update Prometheus only
-#   grafana     - Deploy/update Grafana only
-#   alertmanager - Deploy/update Alertmanager only
-#   config      - Update configurations only (no install)
-
 - name: Deploy monitoring stack
   hosts: monitoring
   become: true
   gather_facts: true
 
   vars:
-    # Override these in inventory or via --extra-vars
     prometheus_version: "2.48.0"
     grafana_version: "10.2.0"
     alertmanager_version: "0.26.0"
-
-    # Paths
     monitoring_base_dir: /opt/monitoring
     prometheus_data_dir: /var/lib/prometheus
     grafana_data_dir: /var/lib/grafana
     alertmanager_data_dir: /var/lib/alertmanager
-
-    # Retention
     prometheus_retention_time: "30d"
     prometheus_retention_size: "10GB"
 
@@ -64,17 +46,11 @@
     - name: Display access information
       ansible.builtin.debug:
         msg: |
-          Monitoring stack deployed successfully!
+          Monitoring stack deployed.
 
-          Access URLs:
           - Prometheus: http://{{ ansible_host }}:9091
           - Grafana: http://{{ ansible_host }}:3000 (admin/admin)
           - Alertmanager: http://{{ ansible_host }}:9093
-
-          Next steps:
-          1. Change Grafana admin password
-          2. Configure alert notification channels
-          3. Deploy entropy exporter on generator hosts
 
 
 - name: Deploy entropy exporter
